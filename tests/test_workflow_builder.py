@@ -42,7 +42,7 @@ def test_draft_inserts_turbo_lora_and_one_save_node() -> None:
     assert workflow["12"]["inputs"]["samples"] == ["10", 0]
     assert workflow["5"]["inputs"]["length"] == frame_count(15)
     assert sum(node["class_type"] == "SaveVideo" for node in workflow.values()) == 1
-    assert workflow["14"]["inputs"]["codec"] == {"codec": "auto"}
+    assert workflow["14"]["inputs"]["codec"] == "auto"
 
 
 def test_quality_uses_base_model_without_lora() -> None:

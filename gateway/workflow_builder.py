@@ -161,7 +161,7 @@ def build_workflow(
                 "video": ["13", 0],
                 "filename_prefix": filename_prefix,
                 "format": "auto",
-                "codec": {"codec": "auto"},
+                "codec": "auto",
             },
         },
     }

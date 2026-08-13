@@ -21,6 +21,7 @@ fi
 python -m pip install --upgrade pip
 python -m pip install -r "${COMFY_DIR}/requirements.txt"
 python -m pip install -r "${APP_DIR}/requirements.txt"
+python -m pip install --no-deps "torchaudio==2.8.0"
 
 mkdir -p "${APP_DIR}/data" "${COMFY_DIR}/input" "${COMFY_DIR}/output"
 echo "安装完成。下一步运行: bash ${APP_DIR}/scripts/download_models.sh all"

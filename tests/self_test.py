@@ -37,7 +37,7 @@ def main() -> None:
         assert graph["11"]["inputs"]["samples"] == ["10", 0]
         assert graph["12"]["inputs"]["samples"] == ["10", 0]
         assert sum(node["class_type"] == "SaveVideo" for node in graph.values()) == 1
-        assert graph["14"]["inputs"]["codec"] == {"codec": "auto"}
+        assert graph["14"]["inputs"]["codec"] == "auto"
         if name == "quality":
             assert "20" not in graph and "21" not in graph
         else:
