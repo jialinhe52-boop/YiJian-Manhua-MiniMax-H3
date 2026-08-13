@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>H3 漫剧工坊</title>
+  <link rel="stylesheet" href="/style.css?v=2">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>MiniMax H3 漫剧工坊</h1>
+      <p id="serviceState">正在检查服务...</p>
+    </div>
+    <button id="settingsButton" class="icon-button" title="API 设置" aria-label="API 设置">设置</button>
+  </header>
+
+  <main>
+    <section class="editor" aria-label="生成设置">
+      <label class="field prompt-field">
+        <span>视频提示词</span>
+        <textarea id="prompt" maxlength="16000" placeholder="描述人物、动作、镜头和声音。例如：古装少女回头看向镜头，衣摆随风摆动，镜头缓慢推近，远处传来风铃声。"></textarea>
+      </label>
+
+      <fieldset>
+        <legend>生成模式</legend>
+        <div class="segments mode-segments">
+          <label><input type="radio" name="generationMode" value="t2va" checked><span>文生视频<small>T2VA · 纯文字</small></span></label>
+          <label><input type="radio" name="generationMode" value="i2va"><span>首帧生视频<small>I2VA · 首帧锚点</small></span></label>
+          <label><input type="radio" name="generationMode" value="fl2va"><span>首尾帧生视频<small>FL2VA · 两端约束</small></span></label>
+          <label><input type="radio" name="generationMode" value="l2va"><span>尾帧生视频<small>L2VA · 尾帧锚点</small></span></label>
+          <label><input type="radio" name="generationMode" value="ref2va"><span>多参全能参考<small>Ref2VA · 图片/视频/音频</small></span></label>
+        </div>
+      </fieldset>
+
+      <div id="frameInputs" class="upload-row" hidden>
+        <label class="upload" id="firstUpload">
+          <input id="firstFrame" type="file" accept="image/png,image/jpeg,image/webp">
+          <span class="upload-title">首帧</span>
+          <span class="upload-state">点击上传</span>
+          <img alt="首帧预览">
+        </label>
+        <label class="upload" id="lastUpload">
+          <input id="lastFrame" type="file" accept="image/png,image/jpeg,image/webp">
+          <span class="upload-title">尾帧</span>
+          <span class="upload-state">可选</span>
+          <img alt="尾帧预览">
+        </label>
+      </div>
+
+      <div id="referenceInputs" class="reference-inputs" hidden>
+        <div class="reference-upload-grid">
+          <label class="reference-upload">
+            <span>角色参考图</span><small>脸型、发型、服饰、体型</small>
+            <input id="characterRefs" type="file" multiple accept="image/png,image/jpeg,image/webp">
+          </label>
+          <label class="reference-upload">
+            <span>场景参考图</span><small>空间、光线、天气、布局</small>
+            <input id="sceneRefs" type="file" multiple accept="image/png,image/jpeg,image/webp">
+          </label>
+          <label class="reference-upload">
+            <span>物品 / 画风参考图</span><small>道具、色彩、线条与质感</small>
+            <input id="itemRefs" type="file" multiple accept="image/png,image/jpeg,image/webp">
+          </label>
+        </div>
+        <p id="imageRefSummary" class="reference-summary">尚未选择参考图</p>
+        <div id="omniInputs" class="omni-inputs" hidden>
+          <label class="reference-upload wide">
+            <span>参考视频</span><small>动作、运镜，可选择沿用原声，最多 3 段</small>
+            <input id="videoRefs" type="file" multiple accept="video/mp4,video/webm,video/quicktime,video/x-matroska">
+          </label>
+          <label class="reference-upload wide">
+            <span>独立参考音频</span><small>角色音色、对白或环境声音，最多 3 条</small>
+            <input id="audioRefs" type="file" multiple accept="audio/mpeg,audio/wav,audio/ogg,audio/webm,audio/mp4,audio/aac,audio/flac">
+          </label>
+          <label class="terms compact"><input id="useVideoAudio" type="checkbox" checked><span>使用每段参考视频的原声</span></label>
+        </div>
+        <label class="field reference-quality">
+          <span>参考图精度</span>
+          <select id="referenceImageSize">
+            <option value="match" selected>均衡：匹配生成尺寸，速度更快</option>
+            <option value="max">高一致：保留至 2048 短边，速度较慢</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="control-grid">
+        <label class="field">
+          <span>画面比例</span>
+          <select id="aspectRatio">
+            <option value="9:16">9:16 竖屏</option>
+            <option value="16:9">16:9 横屏</option>
+            <option value="1:1">1:1 方形</option>
+            <option value="3:4">3:4 竖图</option>
+            <option value="4:3">4:3 横图</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>时长</span>
+          <select id="duration">
+            <option value="4">4 秒</option>
+            <option value="5" selected>5 秒</option>
+            <option value="6">6 秒</option>
+            <option value="8">8 秒</option>
+            <option value="10">10 秒</option>
+            <option value="12">12 秒</option>
+            <option value="15">15 秒</option>
+          </select>
+        </label>
+      </div>
+
+      <fieldset>
+        <legend>生成档位</legend>
+        <div class="segments">
+          <label><input type="radio" name="preset" value="draft"><span>极速预览<small>4 步 · 480 短边</small></span></label>
+          <label><input type="radio" name="preset" value="balanced" checked><span>漫剧均衡<small>8 步 · 608 短边</small></span></label>
+          <label><input type="radio" name="preset" value="quality"><span>高质成片<small>20 步 · 768 短边</small></span></label>
+        </div>
+      </fieldset>
+
+      <label class="terms">
+        <input id="acceptedTerms" type="checkbox">
+        <span>我已阅读并接受<a href="/terms.html" target="_blank">使用条款</a></span>
+      </label>
+
+      <button id="generateButton" class="primary">生成一条视频</button>
+      <p id="errorMessage" class="error" role="alert"></p>
+    </section>
+
+    <section class="preview" aria-label="视频结果">
+      <div class="preview-head">
+        <h2>生成结果</h2>
+        <span id="jobState">等待任务</span>
+      </div>
+      <div class="player-shell">
+        <video id="player" controls playsinline></video>
+        <div id="emptyState" class="empty-state">生成完成后会在这里自动播放</div>
+      </div>
+      <div class="progress-track" aria-hidden="true"><div id="progressBar"></div></div>
+      <a id="downloadLink" class="download" hidden download>下载视频</a>
+    </section>
+  </main>
+
+  <footer>Powered by MiniMax H3 · <a href="/terms.html">使用条款与违规反馈</a></footer>
+
+  <dialog id="settingsDialog">
+    <form method="dialog">
+      <h2>API 设置</h2>
+      <label class="field">
+        <span>访问密钥</span>
+        <input id="apiKey" type="password" autocomplete="off" placeholder="未设置时留空">
+      </label>
+      <div class="dialog-actions">
+        <button value="cancel">取消</button>
+        <button id="saveSettings" value="default" class="primary small">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js?v=2"></script>
+</body>
+</html>
