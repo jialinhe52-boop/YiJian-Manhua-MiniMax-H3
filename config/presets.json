@@ -1,0 +1,32 @@
+{
+  "draft": {
+    "label": "极速预览",
+    "short_edge": 480,
+    "steps": 4,
+    "reference_steps": 12,
+    "lora_name": "minimax_h3_turbo_v4_step600_ema.safetensors",
+    "lora_strength": 1.0,
+    "recommended_gpu": "RTX 5090 32GB",
+    "purpose": "低成本看动作、构图和节奏"
+  },
+  "balanced": {
+    "label": "漫剧均衡",
+    "short_edge": 608,
+    "steps": 8,
+    "reference_steps": 16,
+    "lora_name": "minimax_h3_turbo_v4_step600_ema.safetensors",
+    "lora_strength": 1.0,
+    "recommended_gpu": "RTX 5090 32GB / RTX 4090 48GB",
+    "purpose": "默认出片，兼顾速度、清晰度和一致性"
+  },
+  "quality": {
+    "label": "高质成片",
+    "short_edge": 768,
+    "steps": 20,
+    "reference_steps": 20,
+    "lora_name": null,
+    "lora_strength": 0.0,
+    "recommended_gpu": "RTX 4090 48GB / RTX PRO 6000 96GB",
+    "purpose": "重点镜头和最终成片"
+  }
+}
