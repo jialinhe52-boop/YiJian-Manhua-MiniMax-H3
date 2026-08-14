@@ -4,6 +4,12 @@
 
 `POST /v1/videos`
 
+建议每个分镜生成请求附带稳定且唯一的请求头，网络重试时不会重复排队：
+
+```http
+Idempotency-Key: project-123:storyboard-8:retry-2
+```
+
 ```json
 {
   "prompt": "即梦或普通中文视频提示词",
@@ -57,6 +63,19 @@
 ## 查询与下载
 
 每 2-3 秒调用 `GET /v1/videos/{id}`。完成时响应包含 `content_url`，再请求该地址下载。
+响应还会包含 `progress`；失败时包含 `error`，不再只让调用方猜日志。
+
+取消或删除当前任务：
+
+```http
+DELETE /v1/videos/{id}
+```
+
+读取服务能力：
+
+```http
+GET /v1/capabilities
+```
 
 如果云端设置了 `H3_API_KEY`，所有 `/v1/videos` 请求都要带：
 
@@ -66,3 +85,12 @@ Authorization: Bearer <H3_API_KEY>
 
 软件必须在用户接受 MiniMax H3 使用条款后才发送 `accepted_terms: true`。请求 15 秒时
 保持 `duration: 15`，不要由插件改写为 6 秒；同一分镜不要并行提交三次。
+
+默认安全与清理参数：
+
+| 环境变量 | 默认值 | 作用 |
+| --- | ---: | --- |
+| `H3_CREATE_REQUESTS_PER_MINUTE` | 12 | 单客户端每分钟创建上限 |
+| `H3_JOB_TTL_HOURS` | 72 | 完成/失败/取消任务的保留时间 |
+| `H3_CLEANUP_INTERVAL_SECONDS` | 3600 | 自动清理周期 |
+| `H3_LOW_VRAM` | false | 24GB 卡可设为 true |

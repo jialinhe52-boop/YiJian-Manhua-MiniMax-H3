@@ -115,6 +115,7 @@ select, input[type="password"] { height: 42px; padding: 0 11px; }
 .reference-quality { margin-top: 12px; }
 
 .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+.prompt-mode-field { margin-top: 12px; }
 fieldset { margin: 20px 0 0; padding: 0; border: 0; }
 legend { margin-bottom: 8px; }
 .segments { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -170,6 +171,8 @@ video.ready { display: block; }
 .progress-track { height: 3px; margin-top: 10px; background: var(--panel-2); overflow: hidden; }
 .progress-track div { width: 0; height: 100%; background: var(--accent); transition: width .4s ease; }
 .download { display: inline-grid; place-items: center; height: 38px; margin-top: 14px; padding: 0 16px; text-decoration: none; }
+.result-actions { display: flex; gap: 8px; align-items: center; }
+.danger-button { border-color: #6b3434; color: #ffb0b0; }
 
 dialog { width: min(420px, calc(100% - 32px)); padding: 22px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); }
 dialog::backdrop { background: rgba(0, 0, 0, .68); }

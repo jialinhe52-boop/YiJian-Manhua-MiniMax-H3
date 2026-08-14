@@ -58,6 +58,18 @@ def test_quality_uses_base_model_without_lora() -> None:
     assert workflow["7"]["inputs"]["steps"] == 20
 
 
+def test_low_vram_setting_is_forwarded_to_turbo_node() -> None:
+    workflow = build_workflow(
+        prompt="test",
+        duration=5,
+        aspect_ratio="9:16",
+        seed=1,
+        preset=PRESETS["draft"],
+        low_vram=True,
+    )
+    assert workflow["20"]["inputs"]["low_vram"] is True
+
+
 def test_first_and_last_frames_are_wired_independently() -> None:
     workflow = build_workflow(
         prompt="test",

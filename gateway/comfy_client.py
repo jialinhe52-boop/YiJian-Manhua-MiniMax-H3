@@ -28,13 +28,38 @@ class ComfyClient:
         return payload.get(prompt_id)
 
     async def queue_size(self) -> int:
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.get(f"{self.base_url}/queue")
-            response.raise_for_status()
-            payload = response.json()
+        payload = await self.queue_state()
         return len(payload.get("queue_running", [])) + len(
             payload.get("queue_pending", [])
         )
+
+    async def queue_state(self) -> dict[str, Any]:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.get(f"{self.base_url}/queue")
+            response.raise_for_status()
+            return response.json()
+
+    async def prompt_state(self, prompt_id: str) -> str | None:
+        payload = await self.queue_state()
+        for state, key in (("running", "queue_running"), ("queued", "queue_pending")):
+            for item in payload.get(key, []):
+                if isinstance(item, (list, tuple)) and len(item) > 1 and str(item[1]) == prompt_id:
+                    return state
+                if isinstance(item, dict) and str(item.get("prompt_id") or item.get("id")) == prompt_id:
+                    return state
+        return None
+
+    async def cancel(self, prompt_id: str) -> str | None:
+        state = await self.prompt_state(prompt_id)
+        if state is None:
+            return None
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            if state == "queued":
+                response = await client.post(f"{self.base_url}/queue", json={"delete": [prompt_id]})
+            else:
+                response = await client.post(f"{self.base_url}/interrupt")
+            response.raise_for_status()
+        return state
 
 
 def find_output_file(history: dict[str, Any]) -> Path | None:
@@ -69,3 +94,19 @@ def find_output_file(history: dict[str, Any]) -> Path | None:
         collect(node)
     video_extensions = {".mp4", ".webm", ".mov", ".mkv"}
     return next((path for path in candidates if path.suffix.lower() in video_extensions), None)
+
+
+def find_error_message(history: dict[str, Any]) -> str:
+    messages = history.get("status", {}).get("messages", [])
+    for item in reversed(messages if isinstance(messages, list) else []):
+        if not isinstance(item, (list, tuple)) or not item:
+            continue
+        event = str(item[0])
+        payload = item[1] if len(item) > 1 and isinstance(item[1], dict) else {}
+        if event in {"execution_error", "execution_interrupted"}:
+            return str(
+                payload.get("exception_message")
+                or payload.get("message")
+                or event.replace("_", " ")
+            )[:2000]
+    return "ComfyUI generation failed"

@@ -8,6 +8,9 @@ const errorMessage = $("#errorMessage");
 const player = $("#player");
 const emptyState = $("#emptyState");
 const downloadLink = $("#downloadLink");
+const cancelButton = $("#cancelButton");
+let activeJobId = null;
+let activeJobCancelled = false;
 
 function setHidden(element, hidden) {
   element.hidden = hidden;
@@ -85,7 +88,9 @@ $("#saveSettings").addEventListener("click", () => {
 
 async function poll(jobId) {
   for (;;) {
+    if (activeJobCancelled || activeJobId !== jobId) return;
     await new Promise((resolve) => setTimeout(resolve, 2500));
+    if (activeJobCancelled || activeJobId !== jobId) return;
     const response = await fetch(`/v1/videos/${jobId}`, { headers: headers() });
     if (!response.ok) throw new Error((await response.json()).detail || "查询任务失败");
     const job = await response.json();
@@ -101,13 +106,35 @@ async function poll(jobId) {
       setHidden(downloadLink, false);
       progressBar.style.width = "100%";
       jobState.textContent = `已完成 · ${job.requested_duration} 秒请求`;
+      setHidden(cancelButton, true);
+      activeJobId = null;
       return;
     }
-    if (job.status === "failed") throw new Error("生成失败，请查看服务日志");
-    jobState.textContent = "正在生成";
-    progressBar.style.width = "58%";
+    if (["failed", "cancelled"].includes(job.status)) throw new Error(job.error || "生成任务未完成");
+    jobState.textContent = job.status === "queued" ? "正在排队" : "正在生成";
+    progressBar.style.width = `${Number(job.progress || 55)}%`;
   }
 }
+
+cancelButton.addEventListener("click", async () => {
+  if (!activeJobId) return;
+  cancelButton.disabled = true;
+  try {
+    const response = await fetch(`/v1/videos/${activeJobId}`, { method: "DELETE", headers: headers() });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || "取消任务失败");
+    activeJobCancelled = true;
+    activeJobId = null;
+    jobState.textContent = "任务已取消";
+    progressBar.style.width = "0";
+    setHidden(cancelButton, true);
+  } catch (error) {
+    errorMessage.textContent = error.message;
+  } finally {
+    cancelButton.disabled = false;
+    generateButton.disabled = false;
+  }
+});
 
 generateButton.addEventListener("click", async () => {
   errorMessage.textContent = "";
@@ -121,7 +148,10 @@ generateButton.addEventListener("click", async () => {
     return;
   }
   generateButton.disabled = true;
+  activeJobCancelled = false;
+  activeJobId = null;
   setHidden(downloadLink, true);
+  setHidden(cancelButton, true);
   player.classList.remove("ready");
   setHidden(emptyState, false);
   jobState.textContent = "正在提交";
@@ -166,7 +196,7 @@ generateButton.addEventListener("click", async () => {
       aspect_ratio: $("#aspectRatio").value,
       preset: document.querySelector('input[name="preset"]:checked').value,
       generation_mode: generationMode,
-      prompt_mode: "jimeng",
+      prompt_mode: $("#promptMode").value,
       first_frame: needsFrames && generationMode !== "l2va" ? firstFrame : null,
       last_frame: needsFrames && generationMode !== "i2va" ? lastFrame : null,
       reference_images: needsReferences ? referenceImages : [],
@@ -182,21 +212,27 @@ generateButton.addEventListener("click", async () => {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.detail || "提交失败");
+    activeJobId = result.id;
     jobState.textContent = `已排队 · ${result.requested_duration} 秒请求`;
     progressBar.style.width = "30%";
+    setHidden(cancelButton, false);
     await poll(result.id);
   } catch (error) {
     errorMessage.textContent = error.message;
-    jobState.textContent = "任务未完成";
+    if (!activeJobCancelled) jobState.textContent = "任务未完成";
     progressBar.style.width = "0";
+    setHidden(cancelButton, true);
   } finally {
     generateButton.disabled = false;
   }
 });
 
 fetch("/health")
-  .then((response) => response.json())
-  .then(() => { $("#serviceState").textContent = "服务已连接"; })
+  .then(async (response) => {
+    if (!response.ok) throw new Error((await response.json()).detail || "服务未就绪");
+    return response.json();
+  })
+  .then(() => { $("#serviceState").textContent = "服务与模型引擎已连接"; })
   .catch(() => { $("#serviceState").textContent = "服务未连接"; });
 
 setGenerationMode();

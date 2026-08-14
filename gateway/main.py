@@ -2,18 +2,22 @@ from __future__ import annotations
 
 import base64
 import binascii
+import asyncio
 import os
 import re
+import time
 import uuid
+from collections import defaultdict, deque
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from typing import Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .comfy_client import ComfyClient, find_output_file
+from .comfy_client import ComfyClient, find_error_message, find_output_file
 from .job_store import JobStore
 from .modes import GenerationMode, resolve_generation_mode, validate_generation_inputs
 from .prompt_builder import build_prompt
@@ -65,8 +69,80 @@ settings = Settings()
 presets = load_presets()
 comfy = ComfyClient(settings.comfy_url, settings.request_timeout_seconds)
 store = JobStore(settings.data_dir / "jobs.sqlite3")
-app = FastAPI(title="H3 漫剧云端 API", version="1.0.0")
 web_dir = Path(__file__).resolve().parents[1] / "web"
+
+
+class CreateRateLimiter:
+    def __init__(self, limit: int) -> None:
+        self.limit = max(1, limit)
+        self._requests: dict[str, deque[float]] = defaultdict(deque)
+
+    def check(self, key: str) -> None:
+        now = time.monotonic()
+        bucket = self._requests[key]
+        while bucket and now - bucket[0] >= 60:
+            bucket.popleft()
+        if len(bucket) >= self.limit:
+            raise HTTPException(429, "too many generation requests; retry in one minute")
+        bucket.append(now)
+
+
+create_rate_limiter = CreateRateLimiter(settings.create_requests_per_minute)
+
+
+def _safe_file(root: Path, relative: str | None) -> Path | None:
+    if not relative:
+        return None
+    resolved_root = root.resolve()
+    target = (resolved_root / relative).resolve()
+    if resolved_root not in target.parents:
+        return None
+    return target
+
+
+def _remove_inputs(job: dict[str, object]) -> None:
+    for filename in job.get("input_files") or []:
+        target = _safe_file(settings.comfy_input_dir, str(filename))
+        if target and target.is_file():
+            target.unlink(missing_ok=True)
+    store.clear_input_files(str(job["id"]))
+
+
+def _remove_output(job: dict[str, object]) -> None:
+    target = _safe_file(settings.comfy_output_dir, str(job.get("output_file") or ""))
+    if target and target.is_file():
+        target.unlink(missing_ok=True)
+
+
+def cleanup_expired_jobs() -> int:
+    cutoff = time.time() - max(1, settings.job_ttl_hours) * 3600
+    expired = store.expired(cutoff)
+    for job in expired:
+        _remove_inputs(job)
+        _remove_output(job)
+        store.delete(job["id"])
+    return len(expired)
+
+
+async def _maintenance_loop() -> None:
+    while True:
+        await asyncio.sleep(max(60, settings.cleanup_interval_seconds))
+        cleanup_expired_jobs()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    cleanup_expired_jobs()
+    maintenance = asyncio.create_task(_maintenance_loop())
+    try:
+        yield
+    finally:
+        maintenance.cancel()
+        with suppress(asyncio.CancelledError):
+            await maintenance
+
+
+app = FastAPI(title="H3 漫剧云端 API", version="1.2.0", lifespan=lifespan)
 
 
 def require_api_key(authorization: str | None = Header(default=None)) -> None:
@@ -74,6 +150,15 @@ def require_api_key(authorization: str | None = Header(default=None)) -> None:
         return
     if authorization != f"Bearer {settings.api_key}":
         raise HTTPException(401, "invalid API key")
+
+
+def require_generation_access(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> None:
+    require_api_key(authorization)
+    client = request.client.host if request.client else "unknown"
+    create_rate_limiter.check(client)
 
 
 def _save_data_url(
@@ -100,14 +185,50 @@ def _save_data_url(
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok", "comfyui": settings.comfy_url}
+async def health() -> JSONResponse:
+    try:
+        queue_size = await comfy.queue_size()
+    except Exception as exc:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "comfyui": "unavailable", "detail": str(exc)[:300]},
+        )
+    return JSONResponse({"status": "ok", "comfyui": "ready", "queue_size": queue_size})
 
 
-@app.post("/v1/videos", status_code=202, dependencies=[Depends(require_api_key)])
-async def create_video(request: VideoRequest) -> dict[str, object]:
+@app.get("/v1/capabilities")
+async def capabilities() -> dict[str, object]:
+    return {
+        "api_version": "1.2",
+        "modes": ["t2va", "i2va", "fl2va", "l2va", "ref2va"],
+        "prompt_modes": ["raw", "jimeng", "structured"],
+        "presets": list(presets),
+        "duration": {"min": 4, "max": 15},
+        "reference_limits": {"images": 9, "videos": 3, "audios": 3},
+        "supports": {"cancel": True, "idempotency": True, "single_output": True},
+    }
+
+
+@app.post("/v1/videos", status_code=202, dependencies=[Depends(require_generation_access)])
+async def create_video(
+    request: VideoRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> dict[str, object]:
     if not request.accepted_terms:
         raise HTTPException(422, "MiniMax H3 usage terms must be accepted")
+    if idempotency_key:
+        idempotency_key = idempotency_key.strip()
+        if not re.fullmatch(r"[A-Za-z0-9._:-]{8,128}", idempotency_key):
+            raise HTTPException(422, "invalid Idempotency-Key")
+        existing = store.get_by_idempotency_key(idempotency_key)
+        if existing:
+            return {
+                "id": existing["id"],
+                "status": existing["status"],
+                "requested_duration": existing["payload"]["duration"],
+                "output_count": 1,
+                "reused": True,
+            }
     has_references = bool(request.reference_images or request.reference_videos or request.reference_audios)
     try:
         generation_mode = resolve_generation_mode(
@@ -141,6 +262,17 @@ async def create_video(request: VideoRequest) -> dict[str, object]:
         _save_data_url(item.data, f"reference_audio_{index}", AUDIO_DATA_URL, audio_ext, 100 * 1024 * 1024)
         for index, item in enumerate(request.reference_audios, start=1)
     ]
+    input_files = [
+        item
+        for item in (
+            first,
+            last,
+            *reference_images,
+            *(filename for filename, _use_audio in reference_videos),
+            *reference_audios,
+        )
+        if item
+    ]
     seed = request.seed if request.seed >= 0 else int.from_bytes(os.urandom(8), "big") >> 1
     final_prompt = build_prompt(
         request.prompt,
@@ -168,6 +300,7 @@ async def create_video(request: VideoRequest) -> dict[str, object]:
         reference_videos=reference_videos,
         reference_audios=reference_audios,
         reference_image_size=request.reference_image_size,
+        low_vram=settings.low_vram,
         filename_prefix=f"h3_manhua/{job_id}",
     )
     try:
@@ -176,8 +309,16 @@ async def create_video(request: VideoRequest) -> dict[str, object]:
             raise HTTPException(429, "generation queue is full")
         prompt_id = await comfy.queue(workflow, client_id=job_id)
     except HTTPException:
+        for filename in input_files:
+            target = _safe_file(settings.comfy_input_dir, filename)
+            if target:
+                target.unlink(missing_ok=True)
         raise
     except Exception as exc:
+        for filename in input_files:
+            target = _safe_file(settings.comfy_input_dir, filename)
+            if target:
+                target.unlink(missing_ok=True)
         raise HTTPException(502, f"ComfyUI rejected the request: {exc}") from exc
     payload = request.model_dump(exclude={
         "first_frame", "last_frame", "reference_images", "reference_videos",
@@ -188,7 +329,13 @@ async def create_video(request: VideoRequest) -> dict[str, object]:
     }
     payload["generation_mode"] = generation_mode
     payload.update({"seed": seed, "final_prompt": final_prompt, "output_count": 1})
-    store.put(job_id, prompt_id, payload)
+    store.put(
+        job_id,
+        prompt_id,
+        payload,
+        input_files=input_files,
+        idempotency_key=idempotency_key,
+    )
     return {
         "id": job_id,
         "status": "queued",
@@ -202,7 +349,9 @@ async def get_video(job_id: str) -> dict[str, object]:
     job = store.get(job_id)
     if not job:
         raise HTTPException(404, "job not found")
-    if job["output_file"]:
+    if job["status"] in {"failed", "cancelled"}:
+        status = job["status"]
+    elif job["output_file"]:
         status = "completed"
     else:
         try:
@@ -214,19 +363,46 @@ async def get_video(job_id: str) -> dict[str, object]:
             store.set_output(job_id, str(output))
             job["output_file"] = str(output)
             status = "completed"
+            _remove_inputs(job)
         elif history and history.get("status", {}).get("status_str") == "error":
             status = "failed"
+            job["error"] = find_error_message(history)
+            store.set_status(job_id, status, job["error"])
+            _remove_inputs(job)
         else:
-            status = "processing"
+            try:
+                status = await comfy.prompt_state(job["prompt_id"]) or "processing"
+            except Exception:
+                status = "processing"
+            store.set_status(job_id, status)
     response: dict[str, object] = {
         "id": job_id,
         "status": status,
         "requested_duration": job["payload"]["duration"],
         "output_count": 1,
+        "progress": {"queued": 10, "processing": 55, "running": 55, "completed": 100}.get(status, 0),
     }
     if status == "completed":
         response["content_url"] = f"/v1/videos/{job_id}/content"
+    if status in {"failed", "cancelled"}:
+        response["error"] = job.get("error") or status
     return response
+
+
+@app.delete("/v1/videos/{job_id}", dependencies=[Depends(require_api_key)])
+async def cancel_video(job_id: str) -> dict[str, object]:
+    job = store.get(job_id)
+    if not job:
+        raise HTTPException(404, "job not found")
+    if job["status"] not in {"completed", "failed", "cancelled"}:
+        try:
+            await comfy.cancel(job["prompt_id"])
+        except Exception as exc:
+            raise HTTPException(502, f"ComfyUI cancel request failed: {exc}") from exc
+    _remove_inputs(job)
+    _remove_output(job)
+    store.set_status(job_id, "cancelled", "cancelled by user")
+    return {"id": job_id, "status": "cancelled"}
 
 
 @app.get("/v1/videos/{job_id}/content", dependencies=[Depends(require_api_key)])
@@ -236,9 +412,8 @@ async def download_video(job_id: str) -> FileResponse:
         raise HTTPException(404, "job not found")
     if not job["output_file"]:
         raise HTTPException(409, "video is not ready")
-    output = (settings.comfy_output_dir / job["output_file"]).resolve()
-    root = settings.comfy_output_dir.resolve()
-    if root not in output.parents or not output.is_file():
+    output = _safe_file(settings.comfy_output_dir, job["output_file"])
+    if not output or not output.is_file():
         raise HTTPException(404, "video output is missing")
     return FileResponse(output, media_type="video/mp4", filename=output.name)
 

@@ -54,6 +54,7 @@ def build_workflow(
     reference_videos: list[tuple[str, bool]] | None = None,
     reference_audios: list[str] | None = None,
     reference_image_size: str = "match",
+    low_vram: bool = False,
     filename_prefix: str = "h3_manhua",
 ) -> dict[str, dict[str, Any]]:
     if not prompt.strip():
@@ -176,7 +177,7 @@ def build_workflow(
                 "model": ["1", 0],
                 "lora_name": lora_name,
                 "strength": float(preset.get("lora_strength", 1.0)),
-                "low_vram": False,
+                "low_vram": bool(low_vram),
             },
         }
         graph["21"] = {"class_type": "MiniMaxH3TurboSampler", "inputs": {}}

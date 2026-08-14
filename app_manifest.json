@@ -1,6 +1,6 @@
 {
   "name": "MiniMax H3 漫剧极速云端",
-  "version": "1.1.0-rc1",
+  "version": "1.2.0-rc1",
   "entrypoint": "bash /root/h3-app/scripts/start.sh",
   "ports": {
     "web_and_api": 6006,
@@ -25,6 +25,9 @@
     "default_aspect_ratio": "9:16",
     "default_preset": "balanced",
     "maximum_queue_size": 4,
+    "idempotency": true,
+    "cancellation": true,
+    "job_ttl_hours": 72,
     "reference_limits": {"images": 9, "videos": 3, "audios": 3},
     "modes": ["t2va", "i2va", "fl2va", "l2va", "ref2va"]
   },
