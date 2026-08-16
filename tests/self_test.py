@@ -21,6 +21,19 @@ def main() -> None:
     assert dimensions("9:16", 480) == (480, 864)
     assert dimensions("16:9", 480) == (864, 480)
 
+    for duration in (5, 10, 15):
+        for aspect_ratio in ("9:16", "16:9"):
+            graph = build_workflow(
+                prompt="时长与画幅透传测试",
+                duration=duration,
+                aspect_ratio=aspect_ratio,
+                seed=1,
+                preset=presets["draft"],
+            )
+            assert graph["5"]["inputs"]["length"] == frame_count(duration)
+            expected = (480, 864) if aspect_ratio == "9:16" else (864, 480)
+            assert (graph["5"]["inputs"]["width"], graph["5"]["inputs"]["height"]) == expected
+
     for name, preset in presets.items():
         graph = build_workflow(
             prompt="古装少女回头，镜头推近",

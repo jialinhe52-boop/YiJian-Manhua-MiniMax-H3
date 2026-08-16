@@ -17,37 +17,37 @@ OUTPUT = (
 
 
 DEFAULT_PROMPT = """subject_definitions:
-<Subject 1> is the main character defined by <Picture 1>; preserve the exact face, hairstyle, clothing, age, body proportions and identity.
-<Subject 2> is the supporting character defined by <Picture 2>; preserve the exact face, hairstyle, clothing, age, body proportions and identity.
-<Subject 3> is the main environment defined by <Picture 4> and <Picture 5>; preserve its layout, lighting direction and spatial landmarks.
-<Subject 4> is the key object or costume detail defined by <Picture 7> and <Picture 8>; preserve its shape, material, color and placement.
-<Picture 3> is a character or composition reference for shot planning. <Picture 6> is an atmosphere or composition reference. <Picture 9> is the visual-style reference.
-<Video 1>, <Video 2> and <Video 3> are optional motion and camera references; use each only where the prompt names it.
-<Audio 1>, <Audio 2> and <Audio 3> are the synchronized audio tracks of <Video 1>, <Video 2> and <Video 3>. <Audio 4>, <Audio 5> and <Audio 6> are independent audio references.
+<Subject 1> 是由 <Picture 1> 定义的主角，严格保持脸型、发型、服装、年龄感、身材比例和身份。
+<Subject 2> 是由 <Picture 2> 定义的配角，严格保持脸型、发型、服装、年龄感、身材比例和身份。
+<Subject 3> 是由 <Picture 4> 和 <Picture 5> 定义的主场景，保持空间结构、光线方向和地标位置。
+<Subject 4> 是由 <Picture 7> 和 <Picture 8> 定义的关键物品或服装细节，保持形状、材质、颜色和位置。
+<Picture 3> 用作角色或构图参考，<Picture 6> 用作氛围或构图参考，<Picture 9> 用作视觉风格参考。
+<Video 1>、<Video 2> 和 <Video 3> 是可选动作与运镜参考，只在镜头正文明确点名时使用。
+<Audio 1>、<Audio 2> 和 <Audio 3> 是三条参考视频的同步音轨；<Audio 4>、<Audio 5> 和 <Audio 6> 是独立人物音色或声音参考，只复制指定声音特征，不复制原台词。
 
 summary:
-[reference generation] A short Chinese manhua shot using the defined characters, environment, objects, motion references and audio references. Keep all labels consistent with the uploaded order and generate one continuous audiovisual result.
+[reference generation] 生成一条连续的中文漫剧视听片段，使用已定义的人物、场景、物品、动作和音频参考；所有标签必须与实际上传顺序一致。
 
 retention_analysis:
-<Subject 1> (visible character): fully_preserved - keep identity, face, hairstyle, clothing and body proportions.
-<Subject 2> (visible supporting character): fully_preserved - keep identity and costume details.
-<Subject 3> (environment): fully_preserved - keep layout, lighting and spatial landmarks.
-<Subject 4> (object or costume detail): fully_preserved - keep shape, material, color and placement.
-<Picture 1> and <Picture 2> (character anchors): fully_preserved - use them to maintain character consistency.
-<Picture 4>, <Picture 5> and <Picture 6> (scene anchors): fully_preserved - use them to maintain location and composition.
-<Picture 7>, <Picture 8> and <Picture 9> (object and style anchors): fully_preserved - transfer their visible attributes without adding unrelated objects.
-<Video 1>, <Video 2> and <Video 3> (motion references): weak_reference - borrow only the named movement, camera path or rhythm.
-<Audio 1> through <Audio 6> (audio references): reference - use only the named voice, ambience, effects, rhythm or continuity role.
+<Subject 1>: fully_preserved - 保持主角身份、脸部、发型、服装和身材比例。
+<Subject 2>: fully_preserved - 保持配角身份和服装细节。
+<Subject 3>: fully_preserved - 保持场景结构、光线和空间地标。
+<Subject 4>: fully_preserved - 保持关键物品的形状、材质、颜色和位置。
+<Picture 1>、<Picture 2>: fully_preserved - 用于保持人物一致性。
+<Picture 4>、<Picture 5>、<Picture 6>: fully_preserved - 用于保持场景和构图一致。
+<Picture 7>、<Picture 8>、<Picture 9>: attribute_transfer - 只转移指定物品或风格属性，不增加无关物体。
+<Video 1>、<Video 2>、<Video 3>: weak_reference - 只借用点名的动作、摄影机路径或节奏。
+<Audio 1> 至 <Audio 6>: reference - 只使用点名的音色、环境声、音效、节奏或连续性职责；人物音色不得串到其他人物。
 
 detailed_description:
-[Shot 1] Cinematic 2D Chinese manhua, medium-wide composition. <Subject 1> stands on a rain-wet street defined by <Subject 3>, wearing the clothing and accessories from <Picture 1>. The key object from <Subject 4> remains visible in its defined position. The camera pushes in with small amplitude at slow speed while the character looks into the distance and reacts to footsteps behind them. Preserve the spatial relationship, identity and visual style from the references.
-[Shot 2] At 00:02.000, the camera cuts to a medium close-up. <Subject 1> turns naturally toward the camera; hair and clothing move slightly in the wind. <Subject 2> approaches from the background without blocking the main character. Use <Video 1> only for the named motion or camera rhythm. The shot holds on the face and ends with a stable expression. Keep the action continuous, do not teleport subjects, and do not add extra characters.
+[Shot 1] 中远景，<Subject 1> 站在由 <Subject 3> 定义的雨后街道左侧中景，穿着 <Picture 1> 中的服装与配饰；<Subject 4> 保持在既定位置。镜头以小幅度、慢速向前推进，人物望向远处并对身后脚步声作出反应。保持人物身份、左右站位、视线、空间轴线和参考外观连续。
+[Shot 2] At 00:02.000, 切到中近景。<Subject 1> 自然转向画面右侧，发丝和衣角被微风轻推；<Subject 2> 从右侧后景接近但不遮挡主角。只在此处参考 <Video 1> 指定的动作或运镜节奏。镜头停在人物稳定反应上，禁止瞬移、左右互换或增加无关人物。
 
 overall_soundscape:
-Steady rain, distant wind chimes, soft footsteps and fabric movement continue across the shots. Keep physical sounds synchronized with visible actions. Do not add narration unless it is explicitly written in the detailed description.
+持续雨声、远处风铃、轻微脚步和衣料摩擦声与画面动作同步。正文没有明确对白或画外音时，不新增任何人声。
 
 non_diegetic_music:
-Sparse guzheng and low strings at a slow tempo, with a restrained build during the camera push-in and a gentle fade at the end."""
+N/A"""
 
 
 GUIDE = """# 一键漫剧 H3 导演台 v1

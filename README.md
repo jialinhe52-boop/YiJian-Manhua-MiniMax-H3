@@ -46,9 +46,15 @@ Content-Type: application/json
   "duration": 15,
   "aspect_ratio": "9:16",
   "preset": "balanced",
-  "generation_mode": "i2va",
+  "generation_mode": "ref2va",
   "prompt_mode": "jimeng",
-  "first_frame": "data:image/png;base64,..."
+  "reference_images": [
+    {"data": "data:image/png;base64,...", "role": "other", "name": "当前分镜首帧"},
+    {"data": "data:image/png;base64,...", "role": "character", "name": "林辰"}
+  ],
+  "reference_audios": [
+    {"data": "data:audio/mpeg;base64,...", "name": "林辰人物音色"}
+  ]
 }
 ```
 
@@ -80,7 +86,8 @@ DELETE /v1/videos/{job_id}
 完整应用同时预装 FL2VA 与 Ref2VA。文生、首帧、首尾帧和尾帧分别对应 T2VA、I2VA、
 FL2VA、L2VA；选择多参全能参考时切到 Ref2VA。两套扩散权重不能互相替代。
 参考模式按官方标签顺序自动生成 `<Picture n>`、`<Video n>` 和 `<Audio n>`，软件
-调用方无需自行编号。
+调用方无需自行编号。人物栏上传的参考音频使用独立 `reference_audios` 槽位，每页只
+提交当前分镜实际出现人物的音频，最多 3 路；只参考音色与说话特征，不复制原台词。
 
 即梦提示词可以直接使用。Ref2VA 模式使用官方六段结构；T2VA、I2VA、FL2VA、L2VA
 使用官方三段结构，并在首帧/尾帧模式加入精确时间锚点。不同模型对抽象词、

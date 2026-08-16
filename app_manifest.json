@@ -1,6 +1,6 @@
 {
   "name": "MiniMax H3 漫剧极速云端",
-  "version": "1.2.0-rc1",
+  "version": "1.3.0-rc1",
   "entrypoint": "bash /root/h3-app/scripts/start.sh",
   "ports": {
     "web_and_api": 6006,

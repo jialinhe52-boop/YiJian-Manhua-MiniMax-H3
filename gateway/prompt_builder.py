@@ -46,34 +46,34 @@ def build_prompt(
     retention_lines: list[str] = []
     for index, description in enumerate(reference_images, start=1):
         definition_lines.extend((
-            f"<Subject {index}> is the reusable visible content defined by <Picture {index}> ({description}); preserve only its assigned character, environment, object, costume, composition or visual-style attributes.",
-            f"<Picture {index}> is the concrete reference image for <Subject {index}> and retains its upload-order label.",
+            f"<Subject {index}> 是由 <Picture {index}> 定义的可复用可见内容（{description}），只保留分配给它的人物、环境、物品、服装、构图或视觉风格属性。",
+            f"<Picture {index}> 是 <Subject {index}> 的实际参考图，标签编号严格按上传顺序保持。",
         ))
         retention_lines.append(
-            f"<Subject {index}> and <Picture {index}>: fully_preserved - preserve the assigned identity, appearance, layout, object details, composition or style without mixing it with another reference."
+            f"<Subject {index}>、<Picture {index}>: fully_preserved - 保持指定身份、外观、空间结构、物品细节、构图或风格，不与其他参考混用。"
         )
     audio_index = 1
     for index, (description, use_audio) in enumerate(reference_videos, start=1):
         definition_lines.append(
-            f"<Video {index}> is the motion, camera or temporal-structure reference for {description}; use only the role named by the user."
+            f"<Video {index}> 是“{description}”的动作、运镜或时间结构参考，只用于用户点名的职责。"
         )
         retention_lines.append(
-            f"<Video {index}>: weak_reference - borrow only the requested motion, camera path, rhythm or temporal structure."
+            f"<Video {index}>: weak_reference - 只借用指定动作、摄影机路径、节奏或时间结构。"
         )
         if use_audio:
             definition_lines.append(
-                f"<Audio {audio_index}> is the enabled synchronized audio track of <Video {index}> and is used only for its assigned sound role."
+                f"<Audio {audio_index}> 是 <Video {index}> 中已启用的同步音轨，只用于用户指定的声音职责。"
             )
             retention_lines.append(
-                f"<Audio {audio_index}>: reference - follow only the requested voice, ambience, effects, rhythm or continuity characteristics of <Video {index}>."
+                f"<Audio {audio_index}>: reference - 只参考 <Video {index}> 中指定的音色、环境声、音效、节奏或连续性。"
             )
             audio_index += 1
     for description in reference_audios:
         definition_lines.append(
-            f"<Audio {audio_index}> is an independent audio reference for {description}."
+            f"<Audio {audio_index}> 是“{description}”的独立音频参考。"
         )
         retention_lines.append(
-            f"<Audio {audio_index}>: reference - use only the assigned voice, ambience, effect, rhythm or music characteristic."
+            f"<Audio {audio_index}>: reference - 只使用分配给它的音色、语速、发音习惯、环境声、音效、节奏或音乐特征；人物音色参考不得复制原台词内容，也不得与其他人物串音。"
         )
         audio_index += 1
     if mode == "raw":
@@ -124,10 +124,10 @@ def build_prompt(
 
     if not definition_lines:
         definition_lines.append(
-            "<Subject 1> is the primary visible subject explicitly described by the user; preserve its identity and stated appearance throughout the target video."
+            "<Subject 1> 是用户明确描述的主要可见主体，整段视频保持其身份和既定外观。"
         )
         retention_lines.append(
-            "<Subject 1>: fully_preserved - keep the stated identity, appearance and continuity across all shots."
+            "<Subject 1>: fully_preserved - 所有镜头保持既定身份、外观与连续性。"
         )
 
     continuity = f"；{identity}" if identity else ""
@@ -145,7 +145,7 @@ def build_prompt(
         return (
             "subject_definitions:\n" + "\n".join(definition_lines)
             + "\n\nsummary:\n"
-            + f"[reference generation] Create one {duration}-second audiovisual result in {style_hint}. Follow the user's requested story, shot order and reference roles without inventing unrelated characters, objects or events."
+            + f"[reference generation] 生成一条 {duration} 秒连续视听片段，提交插件时采用作品统一视觉风格：{style_hint}。严格遵循用户指定的剧情、镜头顺序和参考职责，不新增无关人物、物品或事件。"
             + "\n\nretention_analysis:\n" + "\n".join(retention_lines)
             + "\n\ndetailed_description:\n"
             + f"[Shot 1] {style_hint}。{clean}。{path}{continuity}。{instruction}"

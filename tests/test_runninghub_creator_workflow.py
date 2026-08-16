@@ -68,6 +68,8 @@ def test_prompt_and_provenance_are_explicit() -> None:
     ):
         assert section in prompt
     assert "integrated_multimodal_description:" not in prompt
+    assert "严格保持脸型" in prompt
+    assert "is the main character" not in prompt
     assert "overall_soundscape:" in prompt
     assert "non_diegetic_music:" in prompt
     assert "模型与节点不声明原创" in provenance
