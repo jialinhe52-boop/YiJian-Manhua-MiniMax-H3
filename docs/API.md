@@ -45,11 +45,12 @@ Idempotency-Key: project-123:storyboard-8:retry-2
 | `i2va` | `first_frame` | 首帧对齐说明 + 三段式 |
 | `fl2va` | `first_frame`、`last_frame` | 首尾帧对齐说明 + 三段式 |
 | `l2va` | `last_frame` | 尾帧对齐说明 + 三段式 |
-| `ref2va` | 至少一个参考数组素材 | Ref2VA 六段式 |
+| `ref2va` | 至少一张参考图或一段参考视频；音频可附加 | Ref2VA 六段式 |
 
 不同模式的参考输入不能混用。省略 `generation_mode` 时，服务仍会按输入素材自动推断，
-兼容旧版调用。Ref2VA 最多 9 张参考图、3 段参考视频和 3 条独立参考音频；`use_audio`
-决定参考视频原声是否作为音频参考，标签顺序由服务自动构建。响应始终只有一个视频任务：
+兼容旧版调用。Ref2VA 最多 9 张参考图、3 段参考视频和 3 条独立参考音频，所有素材
+合计不超过 12 个文件；独立音频不能作为唯一参考。`use_audio` 决定参考视频原声是否
+作为音频参考，标签顺序由服务自动构建。响应始终只有一个视频任务：
 
 ```json
 {
@@ -85,6 +86,8 @@ Authorization: Bearer <H3_API_KEY>
 
 软件必须在用户接受 MiniMax H3 使用条款后才发送 `accepted_terms: true`。请求 15 秒时
 保持 `duration: 15`，不要由插件改写为 6 秒；同一分镜不要并行提交三次。
+`duration` 的有效范围为 5-15 秒。`style` 与 `aspect_ratio` 是作品级参数，不写回软件中
+可编辑的推理提示词，只在最终提交工作流时由网关追加。
 
 默认安全与清理参数：
 
