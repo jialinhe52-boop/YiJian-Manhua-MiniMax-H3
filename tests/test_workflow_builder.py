@@ -1,4 +1,4 @@
-from gateway.prompt_builder import build_prompt
+from gateway.prompt_builder import append_generation_controls, build_prompt
 from gateway.settings import load_presets
 from gateway.workflow_builder import build_workflow, dimensions, frame_count
 
@@ -7,12 +7,12 @@ PRESETS = load_presets()
 
 
 def test_exact_requested_duration_is_not_replaced() -> None:
-    assert frame_count(4) >= 4 * 24
+    assert frame_count(5) >= 5 * 24
     assert frame_count(15) >= 15 * 24
 
 
 def test_invalid_duration_is_rejected() -> None:
-    for value in (3, 16):
+    for value in (4, 16):
         try:
             frame_count(value)
         except ValueError:
@@ -24,6 +24,17 @@ def test_invalid_duration_is_rejected() -> None:
 def test_portrait_and_landscape_dimensions_are_stable() -> None:
     assert dimensions("9:16", 480) == (480, 864)
     assert dimensions("16:9", 480) == (864, 480)
+    assert dimensions("9:16", 736, 1280) == (736, 1280)
+    assert dimensions("16:9", 736, 1280) == (1280, 736)
+
+
+def test_dimensions_reject_non_h3_grid_values() -> None:
+    try:
+        dimensions("9:16", 720)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("non-32-aligned short edge should fail")
 
 
 def test_draft_inserts_turbo_lora_and_one_save_node() -> None:
@@ -45,7 +56,7 @@ def test_draft_inserts_turbo_lora_and_one_save_node() -> None:
     assert workflow["14"]["inputs"]["codec"] == "auto"
 
 
-def test_quality_uses_base_model_without_lora() -> None:
+def test_quality_uses_twelve_step_base_model_without_lora() -> None:
     workflow = build_workflow(
         prompt="test",
         duration=5,
@@ -55,7 +66,7 @@ def test_quality_uses_base_model_without_lora() -> None:
     )
     assert "20" not in workflow
     assert "21" not in workflow
-    assert workflow["7"]["inputs"]["steps"] == 20
+    assert workflow["7"]["inputs"]["steps"] == 12
 
 
 def test_low_vram_setting_is_forwarded_to_turbo_node() -> None:
@@ -99,7 +110,7 @@ def test_multi_reference_uses_ref2va_and_official_autogrow_inputs() -> None:
     assert workflow["5"]["inputs"]["ref_images.ref_image_0"] == ["30", 0]
     assert workflow["5"]["inputs"]["ref_images.ref_image_1"] == ["31", 0]
     assert workflow["7"]["inputs"]["scheduler"] == "beta"
-    assert workflow["7"]["inputs"]["steps"] == 12
+    assert workflow["7"]["inputs"]["steps"] == 8
     assert "20" not in workflow and "21" not in workflow
 
 
@@ -134,6 +145,23 @@ def test_reference_limits_are_enforced() -> None:
         raise AssertionError("more than 9 reference images should fail")
 
 
+def test_reference_total_limit_and_audio_only_are_enforced() -> None:
+    invalid_inputs = (
+        {"reference_images": ["x.png"] * 9, "reference_audios": ["x.wav"] * 3, "reference_videos": [("x.mp4", False)]},
+        {"reference_audios": ["voice.wav"]},
+    )
+    for references in invalid_inputs:
+        try:
+            build_workflow(
+                prompt="test", duration=5, aspect_ratio="9:16", seed=1,
+                preset=PRESETS["balanced"], **references,
+            )
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid reference combination should fail")
+
+
 def test_jimeng_prompt_is_preserved_and_structured() -> None:
     source = "女孩回头，镜头推近"
     result = build_prompt(source, mode="jimeng", duration=8)
@@ -147,6 +175,30 @@ def test_jimeng_prompt_is_preserved_and_structured() -> None:
     assert all(section in result for section in sections)
     assert [result.index(section) for section in sections] == sorted(result.index(section) for section in sections)
     assert "subject_definitions:" not in result
+
+
+def test_prompt_inference_does_not_inject_style_metadata() -> None:
+    result = build_prompt(
+        "女孩回头，镜头推近",
+        mode="jimeng",
+        style="国风漫剧，9:16竖屏",
+        duration=8,
+    )
+    assert "国风漫剧" not in result
+    assert "9:16" not in result
+
+
+def test_generation_boundary_appends_project_style_and_aspect_ratio() -> None:
+    inferred = build_prompt("女孩回头，镜头推近", mode="jimeng", duration=8)
+    submitted = append_generation_controls(
+        inferred,
+        style="国风二维半厚涂",
+        aspect_ratio="9:16",
+    )
+    assert inferred in submitted
+    assert "国风二维半厚涂" in submitted
+    assert "9:16" in submitted
+    assert "仅提交插件" in submitted
 
 
 def test_first_last_prompt_contains_exact_time_anchors() -> None:

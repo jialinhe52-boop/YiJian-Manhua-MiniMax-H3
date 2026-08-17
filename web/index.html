@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>H3 漫剧工坊</title>
-  <link rel="stylesheet" href="/style.css?v=3">
+  <link rel="stylesheet" href="/style.css?v=4">
 </head>
 <body>
   <header>
@@ -98,7 +98,6 @@
         <label class="field">
           <span>时长</span>
           <select id="duration">
-            <option value="4">4 秒</option>
             <option value="5" selected>5 秒</option>
             <option value="6">6 秒</option>
             <option value="8">8 秒</option>
@@ -109,21 +108,32 @@
         </label>
       </div>
 
-      <label class="field prompt-mode-field">
-        <span>提示词适配</span>
-        <select id="promptMode">
-          <option value="jimeng" selected>即梦提示词智能适配</option>
-          <option value="structured">H3 结构化提示词</option>
-          <option value="raw">原文直出，不改写</option>
-        </select>
-      </label>
+      <div class="control-grid">
+        <label class="field">
+          <span>提示词适配</span>
+          <select id="promptMode">
+            <option value="jimeng" selected>即梦提示词智能适配</option>
+            <option value="structured">H3 结构化提示词</option>
+            <option value="raw">原文直出，不改写</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>显存档位</span>
+          <select id="hardwareProfile">
+            <option value="rtx5090_32g" selected>RTX 5090 32GB</option>
+            <option value="low_vram_24g">24GB 低显存</option>
+            <option value="high_vram_48g">48GB 及以上</option>
+            <option value="auto">自动 / 未知</option>
+          </select>
+        </label>
+      </div>
 
       <fieldset>
         <legend>生成档位</legend>
         <div class="segments">
           <label><input type="radio" name="preset" value="draft"><span>极速预览<small>4 步 · 480 短边</small></span></label>
           <label><input type="radio" name="preset" value="balanced" checked><span>漫剧均衡<small>8 步 · 608 短边</small></span></label>
-          <label><input type="radio" name="preset" value="quality"><span>高质成片<small>20 步 · 768 短边</small></span></label>
+          <label><input type="radio" name="preset" value="quality"><span>高质成片<small>12 步 · 736×1280</small></span></label>
         </div>
       </fieldset>
 
@@ -169,6 +179,6 @@
     </form>
   </dialog>
 
-  <script src="/app.js?v=3"></script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>

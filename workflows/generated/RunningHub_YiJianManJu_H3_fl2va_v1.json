@@ -571,7 +571,7 @@
         "Node name for S&R": "MiniMaxH3ImageToVideo"
       },
       "widgets_values": [
-        "summary:\n以首帧和尾帧共同约束一段国风漫画转场镜头，人物身份与服饰保持一致。\n\ndetailed_description:\n从首帧的雨后长街构图开始，古装少女听见身后动静后缓慢回头，镜头平稳推近；自然过渡到尾帧的面部近景和稳定表情，动作连续，不瞬移，不改变人物身份，不新增人物。\n\noverall_soundscape:\n细雨、风铃、脚步和衣料声连续贯穿，并与可见动作同步。\n\nnon_diegetic_music:\n低音弦乐渐进，尾帧处轻柔收束。",
+        "summary:\n以首帧和尾帧共同约束一段连续转场镜头，人物身份与服饰保持一致。\n\ndetailed_description:\n从首帧的雨后长街构图开始，古装少女听见身后动静后缓慢回头，镜头平稳推近；自然过渡到尾帧的面部近景和稳定表情，动作连续，不瞬移，不改变人物身份，不新增人物。\n\noverall_soundscape:\n细雨、风铃、脚步和衣料声连续贯穿，并与可见动作同步。\n\nnon_diegetic_music:\n低音弦乐渐进，尾帧处轻柔收束。",
         480,
         864,
         124

@@ -571,7 +571,7 @@
         "Node name for S&R": "MiniMaxH3ImageToVideo"
       },
       "widgets_values": [
-        "summary:\n以尾帧构图为终点生成一段国风漫画镜头，运动自然并准确落到尾帧。\n\ndetailed_description:\n古装少女站在雨后的长街上听见身后动静，缓慢回头，镜头从中景推近；动作和空间连续，最后准确停在尾帧的面部近景与稳定表情，保持尾帧人物身份、服饰和光线。\n\noverall_soundscape:\n细雨、远处风铃、脚步声与衣摆声自然同步。\n\nnon_diegetic_music:\n稀疏古琴和低音弦乐，结尾淡出。",
+        "summary:\n以尾帧构图为终点生成连续镜头，运动自然并准确落到尾帧。\n\ndetailed_description:\n古装少女站在雨后的长街上听见身后动静，缓慢回头，镜头从中景推近；动作和空间连续，最后准确停在尾帧的面部近景与稳定表情，保持尾帧人物身份、服饰和光线。\n\noverall_soundscape:\n细雨、远处风铃、脚步声与衣摆声自然同步。\n\nnon_diegetic_music:\n稀疏古琴和低音弦乐，结尾淡出。",
         480,
         864,
         124

@@ -32,7 +32,7 @@ def main() -> None:
             last_frame="self-test.png" if mode == "first_last" else None,
         )
         for preset in load_presets().values()
-        for duration in (4, 15)
+        for duration in (5, 15)
         for aspect in ("9:16", "16:9")
         for mode in ("text", "first", "first_last")
     ]

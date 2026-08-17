@@ -19,10 +19,15 @@ from pydantic import BaseModel, Field
 
 from .comfy_client import ComfyClient, find_error_message, find_output_file
 from .job_store import JobStore
-from .modes import GenerationMode, resolve_generation_mode, validate_generation_inputs
-from .prompt_builder import build_prompt
+from .modes import (
+    GenerationMode,
+    resolve_generation_mode,
+    validate_generation_inputs,
+    validate_reference_assets,
+)
+from .prompt_builder import append_generation_controls, build_prompt
 from .settings import Settings, load_presets
-from .workflow_builder import build_workflow
+from .workflow_builder import build_workflow, dimensions, frame_count
 
 
 IMAGE_DATA_URL = re.compile(r"^data:image/(?P<ext>png|jpeg|jpg|webp);base64,(?P<data>.+)$", re.I)
@@ -49,7 +54,7 @@ class ReferenceAudio(BaseModel):
 
 class VideoRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=16000)
-    duration: int = Field(default=5, ge=4, le=15)
+    duration: int = Field(default=5, ge=5, le=15)
     aspect_ratio: Literal["9:16", "16:9", "1:1", "3:4", "4:3"] = "9:16"
     preset: Literal["draft", "balanced", "quality"] = "balanced"
     prompt_mode: Literal["raw", "jimeng", "structured"] = "jimeng"
@@ -62,7 +67,34 @@ class VideoRequest(BaseModel):
     reference_videos: list[ReferenceVideo] = Field(default_factory=list, max_length=3)
     reference_audios: list[ReferenceAudio] = Field(default_factory=list, max_length=3)
     reference_image_size: Literal["match", "max"] = "match"
+    hardware_profile: Literal["auto", "low_vram_24g", "rtx5090_32g", "high_vram_48g"] = "auto"
     accepted_terms: bool = False
+
+
+class PreflightRequest(BaseModel):
+    duration: int = Field(default=5, ge=5, le=15)
+    aspect_ratio: Literal["9:16", "16:9", "1:1", "3:4", "4:3"] = "9:16"
+    preset: Literal["draft", "balanced", "quality"] = "balanced"
+    generation_mode: GenerationMode = "t2va"
+    hardware_profile: Literal["auto", "low_vram_24g", "rtx5090_32g", "high_vram_48g"] = "auto"
+    reference_image_size: Literal["match", "max"] = "match"
+
+
+HARDWARE_PROFILES = {
+    "auto": {"label": "自动识别", "memory_gb": None},
+    "low_vram_24g": {"label": "24GB 低显存", "memory_gb": 24},
+    "rtx5090_32g": {"label": "RTX 5090 32GB", "memory_gb": 32},
+    "high_vram_48g": {"label": "48GB 及以上", "memory_gb": 48},
+}
+
+
+REFERENCE_IMAGE_DUTIES = {
+    "character": "只定义人物身份、五官、发型、体型和服装；不得复制背景、姿势、构图或光线",
+    "scene": "只定义场景空间结构、材质、关键陈设和主光方向；不得改变人物身份、服装或动作",
+    "item": "只定义物品外形、尺寸关系、材质、颜色和状态；不得改变人物、场景或镜头",
+    "style": "只定义笔触、材质表现和色彩语言；不得复制其中的人物、场景、构图或文字",
+    "other": "只用于名称中明确说明的职责；不得覆盖其他参考的身份、空间、动作或声音",
+}
 
 
 settings = Settings()
@@ -142,7 +174,7 @@ async def lifespan(_app: FastAPI):
             await maintenance
 
 
-app = FastAPI(title="H3 漫剧云端 API", version="1.2.0", lifespan=lifespan)
+app = FastAPI(title="H3 漫剧云端 API", version="1.3.0", lifespan=lifespan)
 
 
 def require_api_key(authorization: str | None = Header(default=None)) -> None:
@@ -196,17 +228,125 @@ async def health() -> JSONResponse:
     return JSONResponse({"status": "ok", "comfyui": "ready", "queue_size": queue_size})
 
 
+def _capability_payload() -> dict[str, object]:
+    return {
+        "api_version": "1.3",
+        "plugin_schema_version": "1.0",
+        "modes": ["t2va", "i2va", "fl2va", "l2va", "ref2va"],
+        "mode_inputs": {
+            "t2va": [],
+            "i2va": ["first_frame"],
+            "fl2va": ["first_frame", "last_frame"],
+            "l2va": ["last_frame"],
+            "ref2va": ["reference_images", "reference_videos", "reference_audios"],
+        },
+        "prompt_modes": ["raw", "jimeng", "structured"],
+        "preset_names": list(presets),
+        "presets": {
+            name: {
+                key: value for key, value in preset.items()
+                if key not in {"lora_name", "lora_strength"}
+            }
+            for name, preset in presets.items()
+        },
+        "duration": {"min": 5, "max": 15},
+        "reference_limits": {"images": 9, "videos": 3, "audios": 3},
+        "reference_total_limit": 12,
+        "reference_roles": ["character", "scene", "item", "style", "other"],
+        "hardware_profiles": HARDWARE_PROFILES,
+        "prompt_boundary": {
+            "style_and_aspect_ratio_are_request_fields": True,
+            "prompt_inference_does_not_inject_style_or_aspect_ratio": True,
+            "generation_submission_appends_style_and_aspect_ratio": True,
+        },
+        "supports": {
+            "cancel": True,
+            "idempotency": True,
+            "single_output": True,
+            "preflight": True,
+            "video_audio_reference": True,
+            "audio_reference_requires_image_or_video": True,
+        },
+        "extensions": {
+            "storyboard_grid": {
+                "available": False,
+                "planned_layouts": ["2x2", "3x2", "3x3"],
+                "activation_gate": "cloud_graph_and_identity_benchmark",
+            },
+            "postprocess_upscale": {
+                "available": False,
+                "planned_outputs": ["2k", "4k"],
+                "activation_gate": "separate_super_resolution_workflow_benchmark",
+            },
+        },
+        "workflow_contract": {
+            "submit": "POST /v1/videos",
+            "status": "GET /v1/videos/{job_id}",
+            "content": "GET /v1/videos/{job_id}/content",
+            "cancel": "DELETE /v1/videos/{job_id}",
+            "preflight": "POST /v1/preflight",
+        },
+    }
+
+
 @app.get("/v1/capabilities")
 async def capabilities() -> dict[str, object]:
+    return _capability_payload()
+
+
+@app.get("/v1/plugin/schema")
+async def plugin_schema() -> dict[str, object]:
+    return _capability_payload()
+
+
+def _preflight_result(request: PreflightRequest) -> dict[str, object]:
+    preset = presets[request.preset]
+    width, height = dimensions(
+        request.aspect_ratio,
+        int(preset["short_edge"]),
+        int(preset["long_edge"]) if preset.get("long_edge") else None,
+    )
+    reference_mode = request.generation_mode == "ref2va"
+    steps = int(preset.get("reference_steps", preset["steps"])) if reference_mode else int(preset["steps"])
+    profile = HARDWARE_PROFILES[request.hardware_profile]
+    memory_gb = profile["memory_gb"]
+    warnings: list[str] = []
+    risk = "normal"
+
+    if memory_gb is None:
+        warnings.append("未指定显存档位，首次云端运行前请核对实际 GPU 显存")
+    if request.reference_image_size == "max" and reference_mode:
+        warnings.append("参考图保留至 2048 短边会显著增加 Ref2VA 显存和耗时")
+        risk = "elevated"
+    if memory_gb is not None and memory_gb <= 24 and request.preset != "draft":
+        warnings.append("24GB 显存建议先使用极速预览档，当前组合存在显存不足风险")
+        risk = "high"
+    if memory_gb is not None and memory_gb <= 32 and request.duration == 15:
+        warnings.append("32GB 及以下显存在 15 秒高分辨率生成时可能溢出；不会自动缩短时长")
+        risk = "high"
+    if memory_gb is not None and memory_gb <= 32 and request.preset == "quality" and request.duration > 12:
+        warnings.append("高质成片超过 12 秒建议使用 48GB 及以上显存")
+        risk = "high"
+
     return {
-        "api_version": "1.2",
-        "modes": ["t2va", "i2va", "fl2va", "l2va", "ref2va"],
-        "prompt_modes": ["raw", "jimeng", "structured"],
-        "presets": list(presets),
-        "duration": {"min": 4, "max": 15},
-        "reference_limits": {"images": 9, "videos": 3, "audios": 3},
-        "supports": {"cancel": True, "idempotency": True, "single_output": True},
+        "risk": risk,
+        "warnings": warnings,
+        "requested_duration": request.duration,
+        "duration_will_not_be_changed": True,
+        "generation_mode": request.generation_mode,
+        "preset": request.preset,
+        "hardware_profile": request.hardware_profile,
+        "width": width,
+        "height": height,
+        "fps": 24,
+        "frame_count": frame_count(request.duration),
+        "steps": steps,
     }
+
+
+@app.post("/v1/preflight")
+async def preflight(request: PreflightRequest) -> dict[str, object]:
+    return _preflight_result(request)
 
 
 @app.post("/v1/videos", status_code=202, dependencies=[Depends(require_generation_access)])
@@ -231,6 +371,11 @@ async def create_video(
             }
     has_references = bool(request.reference_images or request.reference_videos or request.reference_audios)
     try:
+        validate_reference_assets(
+            len(request.reference_images),
+            len(request.reference_videos),
+            len(request.reference_audios),
+        )
         generation_mode = resolve_generation_mode(
             request.generation_mode,
             has_first_frame=bool(request.first_frame),
@@ -274,7 +419,7 @@ async def create_video(
         if item
     ]
     seed = request.seed if request.seed >= 0 else int.from_bytes(os.urandom(8), "big") >> 1
-    final_prompt = build_prompt(
+    inferred_prompt = build_prompt(
         request.prompt,
         mode=request.prompt_mode,
         generation_mode=generation_mode,
@@ -282,9 +427,17 @@ async def create_video(
         duration=request.duration,
         has_first_frame=bool(first),
         has_last_frame=bool(last),
-        reference_images=[f"{item.role}：{item.name}" for item in request.reference_images],
+        reference_images=[
+            f"{item.name}；{REFERENCE_IMAGE_DUTIES[item.role]}"
+            for item in request.reference_images
+        ],
         reference_videos=[(item.name, item.use_audio) for item in request.reference_videos],
         reference_audios=[item.name for item in request.reference_audios],
+    )
+    final_prompt = append_generation_controls(
+        inferred_prompt,
+        style=request.style,
+        aspect_ratio=request.aspect_ratio,
     )
     job_id = uuid.uuid4().hex
     workflow = build_workflow(

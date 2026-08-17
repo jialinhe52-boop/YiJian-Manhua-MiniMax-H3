@@ -160,6 +160,30 @@ generateButton.addEventListener("click", async () => {
     const generationMode = document.querySelector('input[name="generationMode"]:checked').value;
     const needsFrames = ["i2va", "fl2va", "l2va"].includes(generationMode);
     const needsReferences = generationMode === "ref2va";
+    const preset = document.querySelector('input[name="preset"]:checked').value;
+    const hardwareProfile = $("#hardwareProfile").value;
+    const preflightResponse = await fetch("/v1/preflight", {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({
+        duration: Number($("#duration").value),
+        aspect_ratio: $("#aspectRatio").value,
+        preset,
+        generation_mode: generationMode,
+        hardware_profile: hardwareProfile,
+        reference_image_size: $("#referenceImageSize").value,
+      }),
+    });
+    const preflight = await preflightResponse.json();
+    if (!preflightResponse.ok) throw new Error(preflight.detail || "生成参数预检失败");
+    if (preflight.risk === "high") {
+      const accepted = window.confirm(`${preflight.warnings.join("\n")}\n\n软件不会缩短 ${preflight.requested_duration} 秒请求。是否按当前参数继续？`);
+      if (!accepted) {
+        jobState.textContent = "已取消提交";
+        progressBar.style.width = "0";
+        return;
+      }
+    }
     const firstFrame = ["i2va", "fl2va"].includes(generationMode)
       ? await readImage($("#firstFrame"), $("#firstUpload")) : null;
     const lastFrame = ["fl2va", "l2va"].includes(generationMode)
@@ -194,9 +218,10 @@ generateButton.addEventListener("click", async () => {
       prompt,
       duration: Number($("#duration").value),
       aspect_ratio: $("#aspectRatio").value,
-      preset: document.querySelector('input[name="preset"]:checked').value,
+      preset,
       generation_mode: generationMode,
       prompt_mode: $("#promptMode").value,
+      hardware_profile: hardwareProfile,
       first_frame: needsFrames && generationMode !== "l2va" ? firstFrame : null,
       last_frame: needsFrames && generationMode !== "i2va" ? lastFrame : null,
       reference_images: needsReferences ? referenceImages : [],

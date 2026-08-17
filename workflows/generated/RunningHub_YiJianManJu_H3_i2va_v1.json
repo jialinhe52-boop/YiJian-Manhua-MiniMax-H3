@@ -571,7 +571,7 @@
         "Node name for S&R": "MiniMaxH3ImageToVideo"
       },
       "widgets_values": [
-        "summary:\n以首帧人物和场景为锚点生成一段国风漫画镜头，严格保持首帧身份与构图关系。\n\ndetailed_description:\n从首帧开始，古装少女在雨后的长街上听见身后动静，缓慢回头；镜头从中景平稳推近到面部近景，发丝和衣摆随风轻动，首帧中的人物脸部、服装、年龄和空间关系保持一致。\n\noverall_soundscape:\n细雨、远处风铃和轻微脚步声，声音与回头动作同步。\n\nnon_diegetic_music:\n克制的古琴与低音弦乐，结尾淡出。",
+        "summary:\n以首帧人物和场景为锚点生成连续镜头，严格保持首帧身份与构图关系。\n\ndetailed_description:\n从首帧开始，古装少女在雨后的长街上听见身后动静，缓慢回头；镜头从中景平稳推近到面部近景，发丝和衣摆随风轻动，首帧中的人物脸部、服装、年龄和空间关系保持一致。\n\noverall_soundscape:\n细雨、远处风铃和轻微脚步声，声音与回头动作同步。\n\nnon_diegetic_music:\n克制的古琴与低音弦乐，结尾淡出。",
         480,
         864,
         124

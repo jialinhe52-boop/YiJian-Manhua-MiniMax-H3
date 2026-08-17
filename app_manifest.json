@@ -1,6 +1,6 @@
 {
   "name": "MiniMax H3 漫剧极速云端",
-  "version": "1.3.0-rc1",
+  "version": "1.3.0-rc2",
   "entrypoint": "bash /root/h3-app/scripts/start.sh",
   "ports": {
     "web_and_api": 6006,
@@ -20,19 +20,22 @@
     "loras/minimax_h3_turbo_v4_step600_ema.safetensors"
   ],
   "generation": {
-    "duration_seconds": {"minimum": 4, "maximum": 15},
+    "duration_seconds": {"minimum": 5, "maximum": 15},
     "outputs_per_request": 1,
     "default_aspect_ratio": "9:16",
     "default_preset": "balanced",
     "maximum_queue_size": 4,
     "idempotency": true,
     "cancellation": true,
+    "preflight": true,
+    "plugin_schema": true,
     "job_ttl_hours": 72,
-    "reference_limits": {"images": 9, "videos": 3, "audios": 3},
+    "reference_limits": {"images": 9, "videos": 3, "audios": 3, "total": 12},
     "modes": ["t2va", "i2va", "fl2va", "l2va", "ref2va"]
   },
   "hardware": {
     "recommended_for_first_benchmark": "RTX 5090 32GB, 96GB RAM, 130GB disk",
+    "profiles": ["24GB-low-vram", "RTX-5090-32GB", "48GB-plus"],
     "status": "awaiting_cloud_gpu_benchmark"
   },
   "license": {

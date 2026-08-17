@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from .modes import resolve_generation_mode, validate_generation_inputs
+from .modes import resolve_generation_mode, validate_generation_inputs, validate_reference_assets
 
-STYLE_HINTS = {
-    "realistic": "写实电影质感，自然光影，人物五官稳定",
-    "anime": "精致二维动画，线条干净，角色造型稳定",
-    "manhua": "国风漫剧质感，角色设定稳定，画面层次清晰",
-}
 
+def append_generation_controls(prompt: str, *, style: str, aspect_ratio: str) -> str:
+    """Append project-level controls only at the final plugin submission boundary."""
+    controls: list[str] = []
+    if style.strip():
+        controls.append(f"视觉风格严格遵循项目设置：{style.strip()}。")
+    controls.append(f"最终输出画幅严格为 {aspect_ratio}，构图适配该画幅且不添加画面文字。")
+    return f"{prompt.rstrip()}\n\n生成控制（仅提交插件）：\n" + "\n".join(controls)
 
 def build_prompt(
     prompt: str,
@@ -23,6 +25,9 @@ def build_prompt(
     reference_videos: list[tuple[str, bool]] | None = None,
     reference_audios: list[str] | None = None,
 ) -> str:
+    # Style is kept as request metadata; callers append it at the final image/video
+    # plugin boundary instead of contaminating editable prompt inference output.
+    _ = style
     source = prompt.strip()
     clean = " ".join(source.split())
     if not clean:
@@ -30,6 +35,11 @@ def build_prompt(
     reference_images = reference_images or []
     reference_videos = reference_videos or []
     reference_audios = reference_audios or []
+    validate_reference_assets(
+        len(reference_images),
+        len(reference_videos),
+        len(reference_audios),
+    )
     resolved_generation_mode = resolve_generation_mode(
         generation_mode,
         has_first_frame=has_first_frame,
@@ -46,11 +56,11 @@ def build_prompt(
     retention_lines: list[str] = []
     for index, description in enumerate(reference_images, start=1):
         definition_lines.extend((
-            f"<Subject {index}> 是由 <Picture {index}> 定义的可复用可见内容（{description}），只保留分配给它的人物、环境、物品、服装、构图或视觉风格属性。",
+            f"<Subject {index}> 是由 <Picture {index}> 定义的可复用可见内容（{description}），只保留说明中被明确分配的属性，不得影响其他参考职责。",
             f"<Picture {index}> 是 <Subject {index}> 的实际参考图，标签编号严格按上传顺序保持。",
         ))
         retention_lines.append(
-            f"<Subject {index}>、<Picture {index}>: fully_preserved - 保持指定身份、外观、空间结构、物品细节、构图或风格，不与其他参考混用。"
+            f"<Subject {index}>、<Picture {index}>: fully_preserved - 只保持说明中点名的属性，不与其他参考混用。"
         )
     audio_index = 1
     for index, (description, use_audio) in enumerate(reference_videos, start=1):
@@ -82,7 +92,6 @@ def build_prompt(
         raise ValueError(f"unsupported prompt_mode: {mode}")
 
     identity = "人物身份、五官、发型、服饰、关键物品和空间关系连续一致" if preserve_identity else ""
-    style_hint = STYLE_HINTS.get(style, style.strip())
     required_sections = (
         "subject_definitions:",
         "summary:",
@@ -134,7 +143,7 @@ def build_prompt(
     alignment_line = f"{alignment}\n\n" if alignment else ""
     instruction = (
         "镜头运动应说明运动类型、幅度和速度；除非原提示词明确要求，避免无意义切镜。"
-        f"总时长约 {duration} 秒。对白内容和标点必须逐字保留，不翻译、不改写。"
+        f"总时长严格为 {duration} 秒。对白内容和标点必须逐字保留，不翻译、不改写。"
     )
     audio_sections = (
         "\n\noverall_soundscape:\n保留原提示词中指定的环境声、动作声和非语言人声，"
@@ -145,14 +154,14 @@ def build_prompt(
         return (
             "subject_definitions:\n" + "\n".join(definition_lines)
             + "\n\nsummary:\n"
-            + f"[reference generation] 生成一条 {duration} 秒连续视听片段，提交插件时采用作品统一视觉风格：{style_hint}。严格遵循用户指定的剧情、镜头顺序和参考职责，不新增无关人物、物品或事件。"
+            + f"[reference generation] 生成一条 {duration} 秒连续视听片段。严格遵循用户指定的剧情、镜头顺序和参考职责，不新增无关人物、物品或事件。"
             + "\n\nretention_analysis:\n" + "\n".join(retention_lines)
             + "\n\ndetailed_description:\n"
-            + f"[Shot 1] {style_hint}。{clean}。{path}{continuity}。{instruction}"
+            + f"[Shot 1] {clean}。{path}{continuity}。{instruction}"
             + audio_sections
         )
     return (
         "integrated_multimodal_description:\n"
-        + f"[Shot 1] {style_hint}。{alignment_line}{clean}。{path}{continuity}。{instruction}"
+        + f"[Shot 1] {alignment_line}{clean}。{path}{continuity}。{instruction}"
         + audio_sections
     )

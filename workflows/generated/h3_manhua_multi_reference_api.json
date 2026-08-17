@@ -74,7 +74,7 @@
         0
       ],
       "scheduler": "beta",
-      "steps": 16,
+      "steps": 12,
       "denoise": 1.0
     }
   },
@@ -171,9 +171,7 @@
       ],
       "filename_prefix": "h3_manhua",
       "format": "auto",
-      "codec": {
-        "codec": "auto"
-      }
+      "codec": "auto"
     }
   },
   "30": {

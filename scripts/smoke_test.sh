@@ -7,5 +7,5 @@ python "${APP_DIR}/scripts/validate_comfy.py"
 curl --fail --silent --show-error "${BASE_URL}/health"
 curl --fail --silent --show-error \
   -H 'Content-Type: application/json' \
-  -d '{"prompt":"古装少女回头，镜头缓慢推近","duration":4,"aspect_ratio":"9:16","preset":"draft","accepted_terms":true}' \
+  -d '{"prompt":"古装少女回头，镜头缓慢推近","duration":5,"aspect_ratio":"9:16","preset":"draft","accepted_terms":true}' \
   "${BASE_URL}/v1/videos"

@@ -7,6 +7,19 @@ GenerationMode = Literal["t2va", "i2va", "fl2va", "l2va", "ref2va"]
 GENERATION_MODES = frozenset({"t2va", "i2va", "fl2va", "l2va", "ref2va"})
 
 
+def validate_reference_assets(
+    image_count: int,
+    video_count: int,
+    audio_count: int,
+) -> None:
+    if image_count > 9 or video_count > 3 or audio_count > 3:
+        raise ValueError("reference limits are 9 images, 3 videos and 3 audios")
+    if image_count + video_count + audio_count > 12:
+        raise ValueError("reference assets cannot exceed 12 files in total")
+    if audio_count and not (image_count or video_count):
+        raise ValueError("audio references require at least one image or video reference")
+
+
 def resolve_generation_mode(
     generation_mode: str | None,
     *,

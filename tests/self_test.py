@@ -16,7 +16,7 @@ from gateway.workflow_builder import build_workflow, dimensions, frame_count
 
 def main() -> None:
     presets = load_presets()
-    assert frame_count(4) == 107
+    assert frame_count(5) == 124
     assert frame_count(15) == 362
     assert dimensions("9:16", 480) == (480, 864)
     assert dimensions("16:9", 480) == (864, 480)
@@ -68,7 +68,7 @@ def main() -> None:
     assert multi_reference["5"]["class_type"] == "MiniMaxH3ReferenceToVideo"
     assert multi_reference["1"]["inputs"]["unet_name"].startswith("minimax_h3_ref2va")
     assert multi_reference["5"]["inputs"]["ref_images.ref_image_1"] == ["31", 0]
-    assert multi_reference["7"]["inputs"]["steps"] == 12
+    assert multi_reference["7"]["inputs"]["steps"] == 8
     assert multi_reference["7"]["inputs"]["scheduler"] == "beta"
 
     omni_reference = build_workflow(
@@ -92,6 +92,7 @@ def main() -> None:
         has_last_frame=True,
     )
     assert "女孩回头" in prompt and "8 秒" in prompt and "人物身份" in prompt
+    assert "国风漫剧" not in prompt and "9:16" not in prompt
     assert "0.00 秒" in prompt and "8.00 秒" in prompt
     for section in (
         "integrated_multimodal_description:", "overall_soundscape:",

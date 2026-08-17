@@ -14,9 +14,7 @@ from gateway.workflow_builder import build_workflow
 UPSTREAM = ROOT / "workflows" / "upstream"
 OUTPUT = ROOT / "workflows" / "generated"
 
-PROMPT = """国风漫剧，角色设定和服饰保持一致，画面层次清晰。
-
-镜头：一名古装少女站在雨后的长街上，听见身后动静后缓慢回头，衣摆和发丝随风摆动，镜头从中景平稳推近到面部近景。
+PROMPT = """镜头：一名古装少女站在雨后的长街上，听见身后动静后缓慢回头，衣摆和发丝随风摆动，镜头从中景平稳推近到面部近景。
 
 动作连续自然，不瞬移，不改变人物身份，不增加多余人物。
 
@@ -25,6 +23,15 @@ PROMPT = """国风漫剧，角色设定和服饰保持一致，画面层次清�
 
 def node(workflow: dict, node_id: int) -> dict:
     return next(item for item in workflow["nodes"] if item["id"] == node_id)
+
+
+def subgraph_node(workflow: dict, node_type: str) -> dict:
+    return next(
+        item
+        for subgraph in workflow["definitions"]["subgraphs"]
+        for item in subgraph["nodes"]
+        if item["type"] == node_type
+    )
 
 
 def build_turbo(*, name: str, steps: int, megapixels: float) -> None:
@@ -58,14 +65,15 @@ def build_turbo(*, name: str, steps: int, megapixels: float) -> None:
 def build_quality() -> None:
     source = json.loads((UPSTREAM / "official_h3_fl2va.json").read_text(encoding="utf-8"))
     workflow = copy.deepcopy(source)
-    node(workflow, 115)["widgets_values"] = ["9:16 (Portrait Widescreen)", 0.98, 32]
+    node(workflow, 115)["widgets_values"] = ["9:16 (Portrait Widescreen)", 0.9, 32]
     subgraph = node(workflow, 105)
     values = list(subgraph["widgets_values"])
     values[0] = PROMPT
-    values[1] = 768
-    values[2] = 1344
+    values[1] = 736
+    values[2] = 1280
     values[3] = 5
     subgraph["widgets_values"] = values
+    subgraph_node(workflow, "BasicScheduler")["widgets_values"] = ["simple", 12, 1]
     node(workflow, 92)["widgets_values"] = ["video/H3_Manhua_quality", "auto", "auto"]
     OUTPUT.mkdir(parents=True, exist_ok=True)
     (OUTPUT / "h3_manhua_quality.json").write_text(

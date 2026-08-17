@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .modes import resolve_generation_mode, validate_generation_inputs
+from .modes import resolve_generation_mode, validate_generation_inputs, validate_reference_assets
 
 
 DIFFUSION_MODEL = "minimax_h3_fl2va_pruned_int8_convrot.safetensors"
@@ -12,7 +12,7 @@ VIDEO_VAE = "minimax_h3_video_vae_fp16.safetensors"
 AUDIO_VAE = "minimax_h3_audio_vae_fp32.safetensors"
 
 
-def dimensions(aspect_ratio: str, short_edge: int) -> tuple[int, int]:
+def dimensions(aspect_ratio: str, short_edge: int, long_edge: int | None = None) -> tuple[int, int]:
     ratios = {
         "9:16": (9, 16),
         "16:9": (16, 9),
@@ -22,7 +22,13 @@ def dimensions(aspect_ratio: str, short_edge: int) -> tuple[int, int]:
     }
     if aspect_ratio not in ratios:
         raise ValueError(f"unsupported aspect_ratio: {aspect_ratio}")
+    if short_edge <= 0 or short_edge % 32:
+        raise ValueError("short_edge must be a positive multiple of 32")
+    if long_edge is not None and (long_edge <= 0 or long_edge % 32):
+        raise ValueError("long_edge must be a positive multiple of 32")
     x, y = ratios[aspect_ratio]
+    if long_edge is not None and aspect_ratio in {"9:16", "16:9"}:
+        return (short_edge, long_edge) if x < y else (long_edge, short_edge)
     if x <= y:
         width = short_edge
         height = round(short_edge * y / x / 32) * 32
@@ -34,8 +40,8 @@ def dimensions(aspect_ratio: str, short_edge: int) -> tuple[int, int]:
 
 
 def frame_count(duration: int) -> int:
-    if not 4 <= duration <= 15:
-        raise ValueError("duration must be between 4 and 15 seconds")
+    if not 5 <= duration <= 15:
+        raise ValueError("duration must be between 5 and 15 seconds")
     raw = max(5, round(duration * 24))
     return raw + (5 - raw % 17) % 17
 
@@ -75,14 +81,21 @@ def build_workflow(
         has_last_frame=bool(last_frame),
         has_references=bool(reference_images or reference_videos or reference_audios),
     )
-    if len(reference_images) > 9 or len(reference_videos) > 3 or len(reference_audios) > 3:
-        raise ValueError("reference limits are 9 images, 3 videos and 3 audios")
+    validate_reference_assets(
+        len(reference_images),
+        len(reference_videos),
+        len(reference_audios),
+    )
     if reference_mode and (first_frame or last_frame):
         raise ValueError("reference mode cannot be combined with first/last frames")
     if reference_image_size not in {"match", "max"}:
         raise ValueError("reference_image_size must be match or max")
 
-    width, height = dimensions(aspect_ratio, int(preset["short_edge"]))
+    width, height = dimensions(
+        aspect_ratio,
+        int(preset["short_edge"]),
+        int(preset["long_edge"]) if preset.get("long_edge") else None,
+    )
     diffusion_model = REFERENCE_DIFFUSION_MODEL if reference_mode else DIFFUSION_MODEL
     steps = int(preset.get("reference_steps", 20)) if reference_mode else int(preset["steps"])
 

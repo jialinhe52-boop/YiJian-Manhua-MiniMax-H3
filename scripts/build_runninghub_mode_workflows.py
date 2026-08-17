@@ -14,10 +14,10 @@ RUNNINGHUB_SOURCE = (
 OUT = ROOT / "workflows" / "generated"
 
 PROMPTS = {
-    "t2va": """summary:\n国风漫画短视频，保持人物设定和服饰一致。\n\ndetailed_description:\n一名古装少女站在雨后的长街上，听见身后动静后缓慢回头，衣摆和发丝随风摆动；镜头从中景平稳推近到面部近景，动作连续自然，不瞬移，不增加多余人物。\n\noverall_soundscape:\n细雨声、远处风铃声、轻微脚步声与衣料摩擦声，和动作同步。\n\nnon_diegetic_music:\n低音弦乐和稀疏古琴，缓慢推进，结尾自然收束。""",
-    "i2va": """summary:\n以首帧人物和场景为锚点生成一段国风漫画镜头，严格保持首帧身份与构图关系。\n\ndetailed_description:\n从首帧开始，古装少女在雨后的长街上听见身后动静，缓慢回头；镜头从中景平稳推近到面部近景，发丝和衣摆随风轻动，首帧中的人物脸部、服装、年龄和空间关系保持一致。\n\noverall_soundscape:\n细雨、远处风铃和轻微脚步声，声音与回头动作同步。\n\nnon_diegetic_music:\n克制的古琴与低音弦乐，结尾淡出。""",
-    "fl2va": """summary:\n以首帧和尾帧共同约束一段国风漫画转场镜头，人物身份与服饰保持一致。\n\ndetailed_description:\n从首帧的雨后长街构图开始，古装少女听见身后动静后缓慢回头，镜头平稳推近；自然过渡到尾帧的面部近景和稳定表情，动作连续，不瞬移，不改变人物身份，不新增人物。\n\noverall_soundscape:\n细雨、风铃、脚步和衣料声连续贯穿，并与可见动作同步。\n\nnon_diegetic_music:\n低音弦乐渐进，尾帧处轻柔收束。""",
-    "l2va": """summary:\n以尾帧构图为终点生成一段国风漫画镜头，运动自然并准确落到尾帧。\n\ndetailed_description:\n古装少女站在雨后的长街上听见身后动静，缓慢回头，镜头从中景推近；动作和空间连续，最后准确停在尾帧的面部近景与稳定表情，保持尾帧人物身份、服饰和光线。\n\noverall_soundscape:\n细雨、远处风铃、脚步声与衣摆声自然同步。\n\nnon_diegetic_music:\n稀疏古琴和低音弦乐，结尾淡出。""",
+    "t2va": """summary:\n保持人物设定和服饰一致的连续短视频。\n\ndetailed_description:\n一名古装少女站在雨后的长街上，听见身后动静后缓慢回头，衣摆和发丝随风摆动；镜头从中景平稳推近到面部近景，动作连续自然，不瞬移，不增加多余人物。\n\noverall_soundscape:\n细雨声、远处风铃声、轻微脚步声与衣料摩擦声，和动作同步。\n\nnon_diegetic_music:\n低音弦乐和稀疏古琴，缓慢推进，结尾自然收束。""",
+    "i2va": """summary:\n以首帧人物和场景为锚点生成连续镜头，严格保持首帧身份与构图关系。\n\ndetailed_description:\n从首帧开始，古装少女在雨后的长街上听见身后动静，缓慢回头；镜头从中景平稳推近到面部近景，发丝和衣摆随风轻动，首帧中的人物脸部、服装、年龄和空间关系保持一致。\n\noverall_soundscape:\n细雨、远处风铃和轻微脚步声，声音与回头动作同步。\n\nnon_diegetic_music:\n克制的古琴与低音弦乐，结尾淡出。""",
+    "fl2va": """summary:\n以首帧和尾帧共同约束一段连续转场镜头，人物身份与服饰保持一致。\n\ndetailed_description:\n从首帧的雨后长街构图开始，古装少女听见身后动静后缓慢回头，镜头平稳推近；自然过渡到尾帧的面部近景和稳定表情，动作连续，不瞬移，不改变人物身份，不新增人物。\n\noverall_soundscape:\n细雨、风铃、脚步和衣料声连续贯穿，并与可见动作同步。\n\nnon_diegetic_music:\n低音弦乐渐进，尾帧处轻柔收束。""",
+    "l2va": """summary:\n以尾帧构图为终点生成连续镜头，运动自然并准确落到尾帧。\n\ndetailed_description:\n古装少女站在雨后的长街上听见身后动静，缓慢回头，镜头从中景推近；动作和空间连续，最后准确停在尾帧的面部近景与稳定表情，保持尾帧人物身份、服饰和光线。\n\noverall_soundscape:\n细雨、远处风铃、脚步声与衣摆声自然同步。\n\nnon_diegetic_music:\n稀疏古琴和低音弦乐，结尾淡出。""",
 }
 
 
